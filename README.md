@@ -4,8 +4,11 @@
 [![Build Status](https://travis-ci.org/XciD/k8s-rmq-autoscaler.svg?branch=master)](https://travis-ci.org/XciD/k8s-rmq-autoscaler)
 [![Go Report Card](https://goreportcard.com/badge/github.com/XciD/k8s-rmq-autoscaler)](https://goreportcard.com/report/github.com/XciD/k8s-rmq-autoscaler)
 [![codecov](https://codecov.io/gh/XciD/k8s-rmq-autoscaler/branch/master/graph/badge.svg)](https://codecov.io/gh/XciD/k8s-rmq-autoscaler)
+[![Pulls](https://img.shields.io/docker/pulls/xcid/k8s-rmq-autoscaler.svg)](https://hub.docker.com/r/xcid/k8s-rmq-autoscaler)
+[![Layers](https://shields.beevelop.com/docker/image/layers/xcid/k8s-rmq-autoscaler/latest.svg)](https://hub.docker.com/r/xcid/k8s-rmq-autoscaler)
+[![Size](https://shields.beevelop.com/docker/image/image-size/xcid/k8s-rmq-autoscaler/latest.svg)](https://hub.docker.com/r/xcid/k8s-rmq-autoscaler)
 
-K8S Autoscaler is a Pod that will run in your k8s cluster :
+K8S Autoscaler is a Pod that will run in your k8s cluster:
   * watch for your deployments that match the annotations
   * watch rabbitmq for messages in queues and consumers
   * choose to scale up / down the deployment
