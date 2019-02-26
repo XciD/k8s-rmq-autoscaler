@@ -1,0 +1,16 @@
+{
+  "Test": true,
+  "Vendor": false,
+  "DeadLine": "180s",
+  "Enable": [
+    "deadcode",
+    "gofmt",
+    "goimports",
+    "golint",
+    "ineffassign",
+    "interfacer",
+    "misspell",
+    "unconvert",
+    "vet"
+  ]
+}
