@@ -12,8 +12,12 @@ K8S Autoscaler is a Pod that will run in your k8s cluster :
 
 ## K8s Configuration
 
-Create a secret with the RMQ Password
+Create the namespace
+```
+kubectl create k8s-rmq-autoscaler
+```
 
+Create a secret with the RMQ Password
 ```
 kubectl create secret generic rmq-credentials --from-literal=RMQ_PASSWORD=test -n k8s-rmq-autoscaler
 ```
