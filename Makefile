@@ -8,6 +8,10 @@ init:
 	go get -u github.com/modocache/gover
 	go mod download
 
+.PHONY: lint
+lint:
+	GO111MODULE=off $(GOPATH)/bin/gometalinter --disable-all --config .gometalinter.json ./...
+
 .PHONY: build
 build:
 	env GOOS=linux go build -o $(BUILD_DIR)/k8s-rmq-autoscaler .

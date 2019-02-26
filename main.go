@@ -14,9 +14,9 @@ func main() {
 
 	namespaces := flag.String("namespaces", "", "namespaces to watch separated by commas")
 	inCluster := flag.Bool("in_cluster", true, "Boolean that indicate if your are inside the cluster or not")
-	rmqURL := flag.String("rmq_url", "", "rmq Host URL")
-	rmqUser := flag.String("rmq_user", "", "rmq Username used for authentication with the RabbitMQ API")
-	rmqPassword := flag.String("rmq_password", "", "rmq Pasword used for authentication with the RabbitMQ API")
+	rmqURL := flag.String("rmq_url", "", "RMQ Host URL")
+	rmqUser := flag.String("rmq_user", "", "RMQ Username used for authentication with the RabbitMQ API")
+	rmqPassword := flag.String("rmq_password", "", "RMQ Password used for authentication with the RabbitMQ API")
 	loopTick := flag.Int("tick", 10, "Seconds between checks for autoscaling scale")
 	flag.Parse()
 

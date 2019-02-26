@@ -7,7 +7,7 @@
 
 K8S Autoscaler is a Pod that will run in your k8s cluster :
   * watch for your deployments that match the annotations
-  * watch rmq for messages in queues and consumers
+  * watch rabbitmq for messages in queues and consumers
   * choose to scale up / down the deployment
 
 ## K8s Configuration
@@ -18,22 +18,16 @@ Create a secret with the RMQ Password
 kubectl create secret generic rmq-credentials --from-literal=RMQ_PASSWORD=test -n k8s-rmq-autoscaler
 ```
 
-Then you can apply the k8s configuration
+Edit `k8s-rmq-autoscaler.yml` with your RMQ informations and then you can apply the k8s configuration
+
+See bellow for ENV configuration
 ```
 kubectl apply -f k8s-rmq-autoscaler.yml
 ```
 
-You can change some Env config:
-
-| Config                                               | Description                                                                                                                       |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `IN_CLUSTER` | Boolean that indicate if your are inside the cluster or not (default true)     |
-| `NAMESPACES` | namespaces to watch separated by commas, (default, watching all namespaces)    |
-| `TICK`       | Seconds between checks for autoscaling process (default 10)                    |
-
 You can then watch the logs
 ```
-kubectl logs -f deployments/k8s-rmq-autoscaler -n k8s-rmq-autoscaler
+kubectl logs -f pod/k8s-rmq-autoscaler -n k8s-rmq-autoscaler
 ```
 
 Now we add annotations to a deployment
@@ -48,7 +42,7 @@ kubectl annotate deployment/your-deployment --overwrite -n namespace \
 
 Now your deployment is watched by the autoscaler
 
-Other configuration:
+## Annotations
 
 | Config             | Mandatory | Description                                                                                                                                    |
 | ------------------ | ------ | -----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -62,3 +56,14 @@ Other configuration:
 | `override`         | false  | Default: false, Authorize the user to scale more than the max/min limits manually |
 | `safe-unscale`     | false  | Default: true, Forbid the scaler to scale down when you still have message in queue. Used to avoid to unscale a worker that is processing a message|
 
+
+## Environnement config
+
+| Config                                               | Description                            |
+| ---------------------------------------------------- | ---------------------------------------|
+| `RMQ_USER`    | RMQ Username used for authentication with the RabbitMQ API                     |
+| `RMQ_PASSWORD`| RMQ Password used for authentication with the RabbitMQ API                     |
+| `RMQ_URL`     | RMQ URL with scheme (Ex. https://rmq:15772)                                    |
+| `IN_CLUSTER`  | Boolean that indicate if your are inside the cluster or not (default true)     |
+| `NAMESPACES`  | namespaces to watch separated by commas, (default, watching all namespaces)    |
+| `TICK`        | Seconds between checks for autoscaling process (default 10)                    |
