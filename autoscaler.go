@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -35,7 +36,17 @@ const (
 	Override = "override"
 	// SafeUnscale Annotation Key used to forbid the scaler to scale down when you still have message in queue.
 	// Used to avoid to unscale a worker that is processing a message (Default: true)
+	// You can put this to false if you have a readiness probe that put the pod to ready status when he process a message
+	// Then the k8s controller, on scale down, will not unscale pod with ready status
 	SafeUnscale = "safe-unscale"
+	// CoolDownDelay Annotation Key used to specifies how long the autoscaler has to wait before
+	// another downscale operation can be performed after the current one has completed
+	CoolDownDelay = "cooldown-delay"
+
+	missingPropertyError = "deployment: %s has no property `%s` not filled"
+	notAnIntError        = "deployment: %s property `%s` is not an int (ex: 1)"
+	notAnBool            = "deployment: %s property `%s` is not an boolean (ex: true)"
+	notADuration         = "deployment: %s property `%s` is not an duration (ex: 5m0s)"
 )
 
 // Autoscaler struct that will be used to received events from discovery
@@ -61,13 +72,14 @@ type App struct {
 	offset         int32
 	overrideLimits bool
 	safeUnscale    bool
+	coolDownDelay  time.Duration
+	createdDate    time.Time
 }
 
 // Run launch the autoscaler scale
 func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loopTickSeconds int) {
 
 	loopTick := time.NewTicker(time.Duration(loopTickSeconds) * time.Second)
-
 	defer func() {
 		loopTick.Stop()
 	}()
@@ -98,7 +110,12 @@ func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loop
 				klog.Infof("Deleting app %s", key)
 				delete(a.apps, key)
 			case <-loopTick.C:
-				for key, app := range a.apps {
+				for _, app := range a.apps {
+
+					if app.isCoolDown() {
+						klog.Infof("%s is cooled down, waiting more (date %s, duration %s)", app.key, app.createdDate, app.coolDownDelay)
+						continue
+					}
 
 					consumers, queueSize, err := a.rmq.getQueueInformation(app.queue, app.vhost)
 
@@ -111,10 +128,10 @@ func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loop
 					increment := app.scale(consumers, queueSize)
 
 					if app.safeUnscale && increment < 0 && queueSize > 0 {
-						klog.Infof("Safe unscale is enable in app %s, can't unscale when message are in queue", key)
+						klog.Infof("Safe unscale is enable in app %s, can't unscale when message are in queue", app.key)
 					} else if increment != 0 {
 						newReplica := app.replicas + increment
-						klog.Infof("%s Will be updated from %d replicas to %d", key, app.replicas, newReplica)
+						klog.Infof("%s Will be updated from %d replicas to %d", app.key, app.replicas, newReplica)
 						app.ref.Spec.Replicas = int32Ptr(newReplica)
 						newRef, err := client.AppsV1beta1().Deployments(app.ref.Namespace).Update(app.ref)
 
@@ -131,6 +148,10 @@ func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loop
 
 	// Block until the target provider is explicitly canceled.
 	<-ctx.Done()
+}
+
+func (app *App) isCoolDown() bool {
+	return app.coolDownDelay > 0 && time.Now().Sub(app.createdDate) < app.coolDownDelay
 }
 
 func (app *App) scale(consumers int32, queueSize int32) int32 {
@@ -207,46 +228,48 @@ func createApp(deployment *v1beta1.Deployment, key string) (*App, error) {
 			safeUnscale:    true,
 			offset:         0,
 			steps:          1,
+			coolDownDelay:  0,
+			createdDate:    time.Now(),
 		}
 	} else {
-		return nil, errors.New(key + " property `queue` not filled")
+		return nil, fmt.Errorf(missingPropertyError, key, Queue)
 	}
 
 	if vhost, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+Vhost]; ok {
 		app.vhost = vhost
 	} else {
-		return nil, errors.New(key + " property `vhost` not filled")
+		return nil, fmt.Errorf(missingPropertyError, key, Vhost)
 	}
 
 	if minWorkers, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+MinWorkers]; ok {
 		minWorkers, err := strconv.ParseInt(minWorkers, 10, 32)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(notAnIntError, key, MinWorkers)
 		}
 
 		app.minWorkers = int32(minWorkers)
 	} else {
-		return nil, errors.New(key + " property `min-workers` not filled")
+		return nil, fmt.Errorf(missingPropertyError, key, MinWorkers)
 	}
 
 	if maxWorkers, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+MaxWorkers]; ok {
 		maxWorkers, err := strconv.ParseInt(maxWorkers, 10, 32)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(notAnIntError, key, MaxWorkers)
 		}
 
 		app.maxWorkers = int32(maxWorkers)
 	} else {
-		return nil, errors.New(key + " property `max-workers` not filled")
+		return nil, fmt.Errorf(missingPropertyError, key, MaxWorkers)
 	}
 
 	if steps, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+Steps]; ok {
 		steps, err := strconv.ParseInt(steps, 10, 32)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(notAnIntError, key, Steps)
 		}
 
 		app.steps = int32(steps)
@@ -256,7 +279,7 @@ func createApp(deployment *v1beta1.Deployment, key string) (*App, error) {
 		offset, err := strconv.ParseInt(offset, 10, 32)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(notAnIntError, key, Offset)
 		}
 
 		app.offset = int32(offset)
@@ -266,7 +289,7 @@ func createApp(deployment *v1beta1.Deployment, key string) (*App, error) {
 		overrideLimit, err := strconv.ParseBool(overrideLimit)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(notAnIntError, key, Offset)
 		}
 
 		app.overrideLimits = overrideLimit
@@ -276,10 +299,20 @@ func createApp(deployment *v1beta1.Deployment, key string) (*App, error) {
 		safeUnscale, err := strconv.ParseBool(safeUnscale)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(notAnBool, key, SafeUnscale)
 		}
 
 		app.safeUnscale = safeUnscale
+	}
+
+	if coolDownDelay, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+CoolDownDelay]; ok {
+		coolDownDelay, err := time.ParseDuration(coolDownDelay)
+
+		if err != nil {
+			return nil, fmt.Errorf(notADuration, key, CoolDownDelay)
+		}
+
+		app.coolDownDelay = coolDownDelay
 	}
 
 	return app, nil
