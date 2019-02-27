@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -26,6 +27,8 @@ const (
 	MinWorkers = "min-workers"
 	// MaxWorkers Annotation Key used to set the maximum amount of worker to scale up
 	MaxWorkers = "max-workers"
+	// MessagesPerWorker Annotation Key used to set the number of message per worker (Default: 1)
+	MessagesPerWorker = "messages-per-worker"
 	// Steps Annotation Key used to set how many workers will be scale up/down if needed (Default: 1)
 	Steps = "steps"
 	// Offset Annotation Key used to set the offset. The offset will be added if you always want more workers than message in queue.
@@ -60,20 +63,21 @@ type Autoscaler struct {
 
 // App struct used to store information about a deployment
 type App struct {
-	ref            *v1beta1.Deployment
-	key            string
-	queue          string
-	vhost          string
-	minWorkers     int32
-	maxWorkers     int32
-	readyWorkers   int32
-	replicas       int32
-	steps          int32
-	offset         int32
-	overrideLimits bool
-	safeUnscale    bool
-	coolDownDelay  time.Duration
-	createdDate    time.Time
+	ref               *v1beta1.Deployment
+	key               string
+	queue             string
+	vhost             string
+	minWorkers        int32
+	maxWorkers        int32
+	messagesPerWorker int32
+	readyWorkers      int32
+	replicas          int32
+	steps             int32
+	offset            int32
+	overrideLimits    bool
+	safeUnscale       bool
+	coolDownDelay     time.Duration
+	createdDate       time.Time
 }
 
 // Run launch the autoscaler scale
@@ -185,23 +189,23 @@ func (app *App) scale(consumers int32, queueSize int32) int32 {
 		return 0
 	}
 
-	readyMessage := queueSize - consumers + app.offset
+	scale := int32(math.Ceil(float64(queueSize)/float64(app.messagesPerWorker))) - consumers + app.offset
 
-	if readyMessage > 0 {
+	if scale > 0 {
 		if consumers == app.maxWorkers {
 			klog.Infof("%s has already the maximum workers (%d), can do anything more (queueSize: %d / consumers: %d)", app.key, app.maxWorkers, queueSize, consumers)
 			return 0
 		}
-		scaleUp := min(readyMessage, app.steps)
-		klog.Infof("%s will scale with %d (steps: %d / readyMessages: %d)", app.key, scaleUp, app.steps, readyMessage)
+		scaleUp := min(scale, app.steps)
+		klog.Infof("%s will scale with %d (steps: %d / readyMessages: %d)", app.key, scaleUp, app.steps, scale)
 		return scaleUp
-	} else if readyMessage < 0 {
+	} else if scale < 0 {
 		if consumers == app.minWorkers {
 			klog.Infof("%s has already the minimum workers (%d), can do anything more (queueSize: %d / consumers: %d)", app.key, app.minWorkers, queueSize, consumers)
 			return 0
 		}
-		scaleDown := max(readyMessage, -app.steps)
-		klog.Infof("%s will scale with %d (steps: %d / readyMessages: %d)", app.key, scaleDown, app.steps, readyMessage)
+		scaleDown := max(scale, -app.steps)
+		klog.Infof("%s will scale with %d (steps: %d / readyMessages: %d)", app.key, scaleDown, app.steps, scale)
 		return scaleDown
 	}
 
@@ -273,6 +277,16 @@ func createApp(deployment *v1beta1.Deployment, key string) (*App, error) {
 		}
 
 		app.steps = int32(steps)
+	}
+
+	if messagesPerWorker, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+MessagesPerWorker]; ok {
+		messagesPerWorker, err := strconv.ParseInt(messagesPerWorker, 10, 32)
+
+		if err != nil {
+			return nil, fmt.Errorf(notAnIntError, key, MessagesPerWorker)
+		}
+
+		app.messagesPerWorker = int32(messagesPerWorker)
 	}
 
 	if offset, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+Offset]; ok {

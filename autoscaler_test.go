@@ -10,14 +10,15 @@ import (
 
 var (
 	app = &App{
-		key:          "key",
-		minWorkers:   1,
-		maxWorkers:   10,
-		readyWorkers: 0,
-		replicas:     1,
-		steps:        1,
-		offset:       0,
-		createdDate:  time.Now(),
+		key:               "key",
+		minWorkers:        1,
+		maxWorkers:        10,
+		messagesPerWorker: 1,
+		readyWorkers:      0,
+		replicas:          1,
+		steps:             1,
+		offset:            0,
+		createdDate:       time.Now(),
 	}
 )
 
@@ -184,6 +185,26 @@ func TestStepDown(t *testing.T) {
 	}
 }
 
+func TestMessagePerWorker(t *testing.T) {
+	app.offset = 0
+	app.readyWorkers = 4
+	app.replicas = 4
+	app.steps = 1
+	app.messagesPerWorker = 2
+
+	incReplicas := app.scale(4, 8)
+
+	if incReplicas != 0 {
+		t.Error("Expected 0, got ", incReplicas)
+	}
+
+	incReplicas = app.scale(4, 9)
+
+	if incReplicas != 1 {
+		t.Error("Expected 1, got ", incReplicas)
+	}
+}
+
 func TestCoolDown(t *testing.T) {
 	isCoolDown := app.isCoolDown()
 
@@ -325,6 +346,19 @@ func TestCreateApp(t *testing.T) {
 	}
 	if app.maxWorkers != 2 {
 		t.Error("maxWorkers not set correctly")
+	}
+
+	// Add a optional annotations
+	deployment.ObjectMeta.Annotations["k8s-rmq-autoscaler/messages-per-worker"] = "2"
+
+	app, err = createApp(deployment, "test")
+
+	if app == nil {
+		t.Error("App should be created with default values")
+	}
+
+	if app.messagesPerWorker != 2 {
+		t.Error("messagesPerWorker not set correctly")
 	}
 
 	// Add a optional annotations

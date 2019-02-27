@@ -17,7 +17,7 @@ K8S Autoscaler is a Pod that will run in your k8s cluster and automatically:
 
 Create the namespace
 ```
-kubectl create k8s-rmq-autoscaler
+kubectl create namespace k8s-rmq-autoscaler
 ```
 
 Create a secret with the RMQ Password
@@ -53,16 +53,17 @@ Now your deployment is watched by the autoscaler
 
 | Config             | Mandatory | Description                                                                                                                                    |
 | ------------------ | ------ | -----------------------------------------------------------------------------------------------------------------------------------------------|
-| `enable`           | `true`   | enable the autoscaling on this deployment |
-| `max-workers`      | `true`   | the maximum amount of worker to scale up |
-| `min-workers`      | `true`   | the minimum amount of worker to scale down |
-| `queue`            | `true`   | RMQ queue to watch |
-| `vhost`            | `true`   | RMQ vhost where the queue can be found |
-| `cooldown-delay`   | `false`  | Default: `0s`, How long the autoscaler has to wait before another downscale operation can be performed after the current one has completed. (Duration: `5m0s`) |
-| `steps`            | `false`  | Default: `1`, How many workers will be scale up/down if needed |
-| `offset`           | `false`  | Default: `0`, The offset will be added if you always want more workers than message in queue. For example, if you set 1 on offset, you will always have 1 worker more than messages  |
-| `override`         | `false`  | Default: `false`, Authorize the user to scale more than the max/min limits manually |
-| `safe-unscale`     | `false`  | Default: true, Forbid the scaler to scale down when you still have message in queue. Used to avoid to unscale a worker that is processing a message|
+| `enable`              | `true`   | enable the autoscaling on this deployment |
+| `max-workers`         | `true`   | the maximum amount of worker to scale up |
+| `min-workers`         | `true`   | the minimum amount of worker to scale down |
+| `queue`               | `true`   | RMQ queue to watch |
+| `vhost`               | `true`   | RMQ vhost where the queue can be found |
+| `messages-per-worker` | `false`  | Default: `1`, set the number of message per worker |
+| `cooldown-delay`      | `false`  | Default: `0s`, How long the autoscaler has to wait before another downscale operation can be performed after the current one has completed. (Duration: `5m0s`) |
+| `steps`               | `false`  | Default: `1`, How many workers will be scale up/down if needed |
+| `offset`              | `false`  | Default: `0`, The offset will be added if you always want more workers than message in queue. For example, if you set 1 on offset, you will always have 1 worker more than messages  |
+| `override`            | `false`  | Default: `false`, Authorize the user to scale more than the max/min limits manually |
+| `safe-unscale`        | `false`  | Default: true, Forbid the scaler to scale down when you still have message in queue. Used to avoid to unscale a worker that is processing a message|
 
 
 ## Environnement config
