@@ -223,17 +223,18 @@ func createApp(deployment *v1beta1.Deployment, key string) (*App, error) {
 
 	if queue, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+Queue]; ok {
 		app = &App{
-			ref:            deployment,
-			key:            key,
-			queue:          queue,
-			replicas:       *deployment.Spec.Replicas,
-			readyWorkers:   deployment.Status.ReadyReplicas,
-			overrideLimits: false,
-			safeUnscale:    true,
-			offset:         0,
-			steps:          1,
-			coolDownDelay:  0,
-			createdDate:    time.Now(),
+			ref:               deployment,
+			key:               key,
+			queue:             queue,
+			replicas:          *deployment.Spec.Replicas,
+			readyWorkers:      deployment.Status.ReadyReplicas,
+			overrideLimits:    false,
+			safeUnscale:       true,
+			offset:            0,
+			steps:             1,
+			messagesPerWorker: 1,
+			coolDownDelay:     0,
+			createdDate:       time.Now(),
 		}
 	} else {
 		return nil, fmt.Errorf(missingPropertyError, key, Queue)
