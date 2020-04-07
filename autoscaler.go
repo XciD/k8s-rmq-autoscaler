@@ -166,12 +166,12 @@ func (app *App) scale(consumers int32, queueSize int32) int32 {
 		return 0
 	}
 
-	if consumers != app.replicas {
-		klog.Infof("%s is currently unstable, consumer count not stable (ready: %d / real: %d)", app.key, app.readyWorkers, consumers)
-		return 0
-	}
+	// if consumers != app.replicas {
+	// 	klog.Infof("%s is currently unstable, consumer count not stable (ready: %d / real: %d)", app.key, app.readyWorkers, consumers)
+	// 	return 0
+	// }
 
-	if consumers > app.maxWorkers {
+	if app.readyWorkers > app.maxWorkers {
 		klog.Infof("%s have to much worker (%d), need to decrease to max (%d)", app.key, consumers, app.maxWorkers)
 		if !app.overrideLimits {
 			return app.maxWorkers - app.replicas
@@ -180,7 +180,7 @@ func (app *App) scale(consumers int32, queueSize int32) int32 {
 		return 0
 	}
 
-	if consumers < app.minWorkers {
+	if app.readyWorkers < app.minWorkers {
 		klog.Infof("%s have not enough worker (%d), need to increase to min (%d)", app.key, consumers, app.minWorkers)
 		if !app.overrideLimits {
 			return app.minWorkers - app.replicas
@@ -189,10 +189,10 @@ func (app *App) scale(consumers int32, queueSize int32) int32 {
 		return 0
 	}
 
-	scale := int32(math.Ceil(float64(queueSize)/float64(app.messagesPerWorker))) - consumers + app.offset
+	scale := int32(math.Ceil(float64(queueSize)/float64(app.messagesPerWorker))) - app.readyWorkers + app.offset
 
 	if scale > 0 {
-		if consumers == app.maxWorkers {
+		if app.readyWorkers == app.maxWorkers {
 			klog.Infof("%s has already the maximum workers (%d), can do anything more (queueSize: %d / consumers: %d)", app.key, app.maxWorkers, queueSize, consumers)
 			return 0
 		}
@@ -200,7 +200,7 @@ func (app *App) scale(consumers int32, queueSize int32) int32 {
 		klog.Infof("%s will scale with %d (steps: %d / readyMessages: %d)", app.key, scaleUp, app.steps, scale)
 		return scaleUp
 	} else if scale < 0 {
-		if consumers == app.minWorkers {
+		if app.readyWorkers == app.minWorkers {
 			klog.Infof("%s has already the minimum workers (%d), can do anything more (queueSize: %d / consumers: %d)", app.key, app.minWorkers, queueSize, consumers)
 			return 0
 		}
