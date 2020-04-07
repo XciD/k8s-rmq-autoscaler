@@ -75,7 +75,7 @@ func discover(ctx context.Context, hub *Autoscaler, inCluster bool, namespacesTo
 		klog.Infof("Scanning namespace %s", namespace.Name)
 
 		// If we need to watch some namespace, skik others now
-		if len(namespacesToWatch) >= 0 {
+		if len(namespacesToWatch) > 0 {
 			if _, ok := namespaceToWatch[namespace.Name]; !ok {
 				klog.Infof("Skipping namespace %s", namespace.Name)
 				continue
