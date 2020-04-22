@@ -11,6 +11,7 @@ require (
 	github.com/alexkohler/nakedret v0.0.0-20171106223215-c0e305a4f690 // indirect
 	github.com/client9/misspell v0.3.4 // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/lint v0.0.0-20181217174547-8f45f776aaf1 // indirect
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
@@ -41,19 +42,17 @@ require (
 	github.com/walle/lll v0.0.0-20160702150637-8b13b3fbf731 // indirect
 	golang.org/x/crypto v0.0.0-20190225124518-7f87c0fbb88b // indirect
 	golang.org/x/lint v0.0.0-20181217174547-8f45f776aaf1 // indirect
-	golang.org/x/net v0.0.0-20190225153610-fe579d43d832 // indirect
 	golang.org/x/oauth2 v0.0.0-20190220154721-9b3c75971fc9 // indirect
-	golang.org/x/sys v0.0.0-20190225065934-cc5685c2db12 // indirect
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
 	golang.org/x/tools v0.0.0-20190225234524-2dc4ef2775b8 // indirect
 	gopkg.in/alecthomas/kingpin.v3-unstable v3.0.0-20180810215634-df19058c872c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/yaml.v2 v2.2.2 // indirect
 	honnef.co/go/tools v0.0.0-20190215041234-466a0476246c // indirect
 	k8s.io/api v0.0.0-20190111032252-67edc246be36
 	k8s.io/apimachinery v0.0.0-20190223094358-dcb391cde5ca
 	k8s.io/client-go v10.0.0+incompatible
 	k8s.io/klog v0.2.0
+	k8s.io/kube-openapi v0.0.0-20180629012420-d83b052f768a // indirect
 	mvdan.cc/interfacer v0.0.0-20180901003855-c20040233aed // indirect
 	mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b // indirect
 	mvdan.cc/unparam v0.0.0-20190213212834-da01123e7b4f // indirect

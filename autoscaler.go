@@ -9,8 +9,12 @@ import (
 	"time"
 
 	"k8s.io/api/apps/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 )
 
@@ -89,6 +93,7 @@ func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loop
 	}()
 
 	go func() {
+		recorder, _ := eventRecorder(client)
 		for {
 			select {
 			case deployment := <-a.add:
@@ -124,12 +129,21 @@ func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loop
 					consumers, queueSize, err := a.rmq.getQueueInformation(app.queue, app.vhost)
 
 					if err != nil {
+						recorder.Eventf(app.ref, v1.EventTypeWarning, "ASWarning", "error during queue fetch, removing the app (%s)", err)
 						klog.Infof("%s error during queue fetch, removing the app (%s)", app.key, err)
 						continue
 					}
 
 					// Get the next scale info
 					increment := app.scale(consumers, queueSize)
+
+					if increment > 0 {
+						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASScaleUp", "obseved queueSize %d, adjusting by %d", queueSize, increment)
+					} else if increment < 0 {
+						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASScaleDown", "obseved queueSize %d, adjusting by %d", queueSize, increment)
+					} else {
+						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASStatus", "obseved queueSize %d", queueSize)
+					}
 
 					if app.safeUnscale && increment < 0 && queueSize > 0 {
 						klog.Infof("Safe unscale is enable in app %s, can't unscale when message are in queue", app.key)
@@ -347,4 +361,19 @@ func max(a, b int32) int32 {
 		return a
 	}
 	return b
+}
+
+// eventRecorder returns an EventRecorder type that can be
+// used to post Events to different object's lifecycles.
+func eventRecorder(
+	kubeClient *kubernetes.Clientset) (record.EventRecorder, error) {
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartLogging(klog.Infof)
+	eventBroadcaster.StartRecordingToSink(
+		&typedcorev1.EventSinkImpl{
+			Interface: kubeClient.CoreV1().Events("")})
+	recorder := eventBroadcaster.NewRecorder(
+		scheme.Scheme,
+		v1.EventSource{Component: "autoscaler.rabbitmq"})
+	return recorder, nil
 }

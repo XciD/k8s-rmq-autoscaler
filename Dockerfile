@@ -9,7 +9,7 @@ COPY go.sum /go/src/$PROJECT
 
 RUN go mod download
 
-COPY . .
+COPY ./*.go .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /k8s-rmq-autoscaler .
 
 FROM alpine as release
