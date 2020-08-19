@@ -126,7 +126,7 @@ func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loop
 						continue
 					}
 
-					consumers, queueSize, err := a.rmq.getQueueInformation(app.queue, app.vhost)
+					consumers, queueSize, messagesPublished, err := a.rmq.getQueueInformation(app.queue, app.vhost, int32(app.coolDownDelay.Seconds()))
 
 					if err != nil {
 						recorder.Eventf(app.ref, v1.EventTypeWarning, "ASWarning", "error during queue fetch, removing the app (%s)", err)
@@ -138,15 +138,17 @@ func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loop
 					increment := app.scale(consumers, queueSize)
 
 					if increment > 0 {
-						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASScaleUp", "obseved queueSize %d, adjusting by %d", queueSize, increment)
+						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASScaleUp", "obseved queueSize %d / published: %d, adjusting by %d", queueSize, messagesPublished, increment)
+					} else if app.safeUnscale && increment < 0 && (queueSize > 0 || messagesPublished > 0) {
+						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASSafeCoolDown", "obseved queueSize %d / published: %d, waiting for cooldown to adjust by %d", queueSize, messagesPublished, increment)
 					} else if increment < 0 {
-						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASScaleDown", "obseved queueSize %d, adjusting by %d", queueSize, increment)
+						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASScaleDown", "obseved queueSize %d / published: %d, adjusting by %d", queueSize, messagesPublished, increment)
 					} else {
-						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASStatus", "obseved queueSize %d", queueSize)
+						recorder.Eventf(app.ref, v1.EventTypeNormal, "ASStatus", "obseved queueSize %d / published: %d", queueSize, messagesPublished)
 					}
 
-					if app.safeUnscale && increment < 0 && queueSize > 0 {
-						klog.Infof("Safe unscale is enable in app %s, can't unscale when message are in queue", app.key)
+					if app.safeUnscale && increment < 0 && (queueSize > 0 || messagesPublished > 0) {
+						klog.Infof("Safe unscale is enable in app %s, can't unscale when message are in queue or messages have been published", app.key)
 					} else if increment != 0 {
 						newReplica := app.replicas + increment
 						klog.Infof("%s Will be updated from %d replicas to %d", app.key, app.replicas, newReplica)
