@@ -1,5 +1,7 @@
 module github.com/XciD/k8s-rmq-autoscaler
 
+go 1.14
+
 require (
 	4d63.com/gochecknoglobals v0.0.0-20190118042838-abbdf6ec0afb // indirect
 	4d63.com/gochecknoinits v0.0.0-20180528051558-14d5915061e5 // indirect
