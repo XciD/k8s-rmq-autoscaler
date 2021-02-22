@@ -69,7 +69,7 @@ func (rmq *rmq) getQueueInformation(queue string, vhost string, cooldown int32) 
 	json.NewDecoder(resp.Body).Decode(&data)
 
 	var messagesPublished int32
-	if cooldown == 0 {
+	if cooldown == 0 || len(data.MessageStats.PublishDetails.Samples) < 2 {
 		messagesPublished = 0
 	} else {
 		messagesPublished = data.MessageStats.PublishDetails.Samples[0].Sample - data.MessageStats.PublishDetails.Samples[1].Sample
