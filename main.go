@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/namsral/flag"
-	"k8s.io/api/apps/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/klog"
 )
 
@@ -30,8 +30,8 @@ func main() {
 	hub := &Autoscaler{
 		rmq:    rmq,
 		apps:   make(map[string]*App),
-		add:    make(chan *v1beta1.Deployment),
-		delete: make(chan *v1beta1.Deployment),
+		add:    make(chan *appsv1.Deployment),
+		delete: make(chan *appsv1.Deployment),
 	}
 
 	k8sClient, err := discover(ctx, hub, *inCluster, *namespaces)

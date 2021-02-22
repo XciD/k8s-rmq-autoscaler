@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"k8s.io/api/apps/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -58,8 +58,8 @@ const (
 
 // Autoscaler struct that will be used to received events from discovery
 type Autoscaler struct {
-	add    chan *v1beta1.Deployment
-	delete chan *v1beta1.Deployment
+	add    chan *appsv1.Deployment
+	delete chan *appsv1.Deployment
 	apps   map[string]*App
 	client *kubernetes.Clientset
 	rmq    *rmq
@@ -67,7 +67,7 @@ type Autoscaler struct {
 
 // App struct used to store information about a deployment
 type App struct {
-	ref               *v1beta1.Deployment
+	ref               *appsv1.Deployment
 	key               string
 	queue             string
 	vhost             string
@@ -153,7 +153,7 @@ func (a *Autoscaler) Run(ctx context.Context, client *kubernetes.Clientset, loop
 						newReplica := app.replicas + increment
 						klog.Infof("%s Will be updated from %d replicas to %d", app.key, app.replicas, newReplica)
 						app.ref.Spec.Replicas = int32Ptr(newReplica)
-						newRef, err := client.AppsV1beta1().Deployments(app.ref.Namespace).Update(app.ref)
+						newRef, err := client.AppsV1().Deployments(app.ref.Namespace).Update(app.ref)
 
 						if err != nil {
 							klog.Errorf("Error during deployment (%s) update, retry later (%s)", app.key, err)
@@ -230,7 +230,7 @@ func (app *App) scale(consumers int32, queueSize int32) int32 {
 	return 0
 }
 
-func createApp(deployment *v1beta1.Deployment, key string) (*App, error) {
+func createApp(deployment *appsv1.Deployment, key string) (*App, error) {
 	if _, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+Enable]; !ok {
 		return nil, errors.New(key + " not concerned by autoscaling, skipping")
 	}
