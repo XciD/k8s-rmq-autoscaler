@@ -232,7 +232,13 @@ func (app *App) scale(consumers int32, queueSize int32) int32 {
 
 func createApp(deployment *appsv1.Deployment, key string) (*App, error) {
 	if _, ok := deployment.ObjectMeta.Annotations[AnnotationPrefix+Enable]; !ok {
-		return nil, errors.New(key + " not concerned by autoscaling, skipping")
+		enable, err := strconv.ParseBool(_)
+		if(err != nil)
+			return nil, errors.New(key + " cannot parse bool when checking 'enable'")
+		}
+		if(enable != true){
+			return nil, errors.New(key + " autoscaler disabled, skipping")
+		}
 	}
 
 	var app *App
